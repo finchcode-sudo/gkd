@@ -114,7 +114,11 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                 )
             },
             actions = {
-                TextButton(onClick = { pointMode = !pointMode }) {
+                TextButton(onClick = {
+                    pointMode = !pointMode
+                    // 切回选组件模式就清掉坐标，红圈消失，生成时不再带坐标
+                    if (!pointMode) markedPoint = null
+                }) {
                     Text(text = if (pointMode) "选组件" else "取坐标")
                 }
                 // 常驻按钮（没选中时禁用），避免顶栏内容随选中状态变化
