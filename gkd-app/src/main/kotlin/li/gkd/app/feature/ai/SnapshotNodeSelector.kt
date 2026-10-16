@@ -131,6 +131,15 @@ fun SnapshotNodeSelector(
     }
 }
 
+/** 屏幕坐标 (x, y) 处命中的最小面积可见节点；没有命中返回 null */
+fun hitNodeAt(nodes: List<NodeInfo>, x: Int, y: Int): NodeInfo? = nodes
+    .filter { it.attr.visibleToUser }
+    .filter { node ->
+        node.attr.left <= x && node.attr.right >= x &&
+            node.attr.top <= y && node.attr.bottom >= y
+    }
+    .minByOrNull { it.attr.width * it.attr.height }
+
 /**
  * 扩大选中：返回父节点（null 表示已到根）
  */

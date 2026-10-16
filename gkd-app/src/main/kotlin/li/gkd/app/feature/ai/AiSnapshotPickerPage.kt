@@ -79,6 +79,12 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
     // 底部按钮行高度（px），用于推导截图高度
     var bottomBarHeightPx by remember { mutableStateOf(0) }
     val lastComponent = selectedNodes.lastOrNull()?.toSelectedComponent()
+    // 没手动选组件、但标了坐标时，用坐标处最小的控件当触发条件，这样标完坐标就能直接生成
+    val effectiveNodes = if (selectedNodes.isNotEmpty()) {
+        selectedNodes
+    } else {
+        markedPoint?.let { (px, py) -> hitNodeAt(nodes, px, py) }?.let { listOf(it) }.orEmpty()
+    }
     val summary = when (selectedNodes.size) {
         0 -> "点击截图选择组件"
         1 -> lastComponent?.displayText().orEmpty()
@@ -179,7 +185,7 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                 if (pointMode) {
                     PointInfoStrip(
                         point = markedPoint,
-                        reference = selectedNodes.lastOrNull(),
+                        reference = effectiveNodes.lastOrNull(),
                     )
                 }
                 Row(
@@ -236,10 +242,10 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     TextButton(
-                        enabled = selectedNodes.isNotEmpty(),
+                        enabled = effectiveNodes.isNotEmpty(),
                         onClick = throttle {
                             val appId = snapshot?.appId ?: return@throttle
-                            vm.startConversation(route.snapshotId, appId, selectedNodes, markedPoint)
+                            vm.startConversation(route.snapshotId, appId, effectiveNodes, markedPoint)
                             if (route.fromConversation) {
                                 // 从会话页进来的：组件已经写进那个会话，直接返回它，
                                 // 否则会在返回栈里留下两个相同的会话页
@@ -262,10 +268,10 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                         )
                     }
                     TextButton(
-                        enabled = selectedNodes.isNotEmpty(),
+                        enabled = effectiveNodes.isNotEmpty(),
                         onClick = throttle {
                             val appId = snapshot?.appId ?: return@throttle
-                            vm.generateDirect(route.snapshotId, appId, selectedNodes, markedPoint)
+                            vm.generateDirect(route.snapshotId, appId, effectiveNodes, markedPoint)
                             mainVm.popPage()
                         },
                         modifier = Modifier.weight(1f),
