@@ -1007,6 +1007,25 @@ object AiRuleGenerator {
         }
     }
 
+    /**
+     * 不经过 AI：把已经写好的规则文本校验后直接入库，并记进该快照的会话里。
+     * 返回 false 表示规则文本无效。
+     */
+    suspend fun acceptLocalRule(snapshotId: Long, ruleText: String, note: String): Boolean {
+        val rule = parseAndValidateRule(ruleText) ?: return false
+        insertRuleToSubscription(rule)
+        AiConversationStore.appendMessage(
+            snapshotId = snapshotId,
+            message = AiMessage(
+                role = "assistant",
+                content = "$note\n\n```json\n$ruleText\n```\n\n已加入本地规则。",
+                time = System.currentTimeMillis(),
+            ),
+            status = AiConversation.STATUS_ACCEPTED,
+        )
+        return true
+    }
+
     private suspend fun insertRuleToSubscription(newSubs: RawSubscription) {
         val newApp = newSubs.apps.firstOrNull() ?: return
         SubscriptionRepository.update(LOCAL_SUBS_ID) { currentSubs ->

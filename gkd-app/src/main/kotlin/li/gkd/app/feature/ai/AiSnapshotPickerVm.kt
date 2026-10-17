@@ -12,6 +12,9 @@ import li.gkd.app.ui.share.BaseViewModel
 import li.gkd.app.ui.share.launchUi
 import li.gkd.app.util.AiRuleGenerator
 import li.gkd.app.util.LogUtils
+import li.gkd.app.util.ToastUtils
+import org.json.JSONArray
+import org.json.JSONObject
 import li.gkd.app.util.keepNullJson
 import li.gkd.app.util.launchLogged
 
@@ -75,6 +78,82 @@ class AiSnapshotPickerVm : BaseViewModel() {
                 )
             }
         }
+    }
+
+    /**
+     * 有坐标时不调用 AI：触发条件取所选组件，点击位置用标的绝对坐标，直接在本地生成并入库。
+     * AI 只能读到节点文字、看不到截图，对节点树里没有的弹窗按钮写不出可靠规则。
+     */
+    fun generateLocal(snapshotId: Long, appId: String, node: NodeInfo, point: Pair<Int, Int>) {
+        val snap = snapshotMutable.value
+        scope.launchUi {
+            AiRuleLauncher.ensureConversation(snapshotId, appId)
+            AiConversationStore.setSelectedComponents(snapshotId, listOf(node.toSelectedComponent()))
+            AiConversationStore.appendMessage(
+                snapshotId = snapshotId,
+                message = AiMessage(
+                    role = "user",
+                    content = "按坐标 (${point.first}, ${point.second}) 在本地生成规则，不调用 AI。",
+                    time = System.currentTimeMillis(),
+                ),
+            )
+            val ruleText = buildPointRule(appId, snap?.appInfo?.name, snap?.activityId, node, point)
+            val ok = AiRuleGenerator.acceptLocalRule(
+                snapshotId = snapshotId,
+                ruleText = ruleText,
+                note = "触发条件：${selectorOf(node)}；点击位置：屏幕坐标 (${point.first}, ${point.second})。",
+            )
+            ToastUtils.toast(if (ok) "规则已生成并加入本地规则" else "规则无效，未加入")
+        }
+    }
+
+    private fun selectorOf(node: NodeInfo): String {
+        val a = node.attr
+        val vid = a.vid ?: a.id?.substringAfterLast('/', a.id)
+        val text = a.text
+        val desc = a.desc
+        val base = when {
+            !vid.isNullOrEmpty() -> "[vid=\"${escapeSelector(vid)}\"]"
+            !text.isNullOrEmpty() -> "[text=\"${escapeSelector(text)}\"]"
+            !desc.isNullOrEmpty() -> "[desc=\"${escapeSelector(desc)}\"]"
+            else -> "[name=\"${escapeSelector(a.name.orEmpty())}\"]" +
+                "[left=${a.left}][top=${a.top}][right=${a.right}][bottom=${a.bottom}]"
+        }
+        return "$base[visibleToUser=true]"
+    }
+
+    private fun escapeSelector(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
+
+    private fun buildPointRule(
+        appId: String,
+        appName: String?,
+        activityId: String?,
+        node: NodeInfo,
+        point: Pair<Int, Int>,
+    ): String {
+        val rule = JSONObject()
+            .put("key", 0)
+            .put("matches", selectorOf(node))
+            .put("action", "clickCenter")
+            .put(
+                "position",
+                JSONObject().put("x", point.first.toString()).put("y", point.second.toString()),
+            )
+        val group = JSONObject()
+            .put("key", 0)
+            .put("name", "点击坐标")
+            .put("desc", "点击屏幕坐标 (${point.first}, ${point.second})")
+            .put("actionMaximum", 1)
+            .put("resetMatch", "app")
+            .put("rules", JSONArray().put(rule))
+        if (!activityId.isNullOrEmpty()) {
+            group.put("activityIds", JSONArray().put(activityId))
+        }
+        return JSONObject()
+            .put("id", appId)
+            .put("name", appName ?: appId)
+            .put("groups", JSONArray().put(group))
+            .toString(2)
     }
 
     /** 用户在截图上标出的点击位置，写给 AI 的说明 */

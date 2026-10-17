@@ -275,14 +275,21 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                         enabled = effectiveNodes.isNotEmpty(),
                         onClick = throttle {
                             val appId = snapshot?.appId ?: return@throttle
-                            vm.generateDirect(route.snapshotId, appId, effectiveNodes, markedPoint)
+                            val point = markedPoint
+                            if (point != null) {
+                                // 有坐标：本地直接生成，不调用 AI
+                                val node = effectiveNodes.lastOrNull() ?: return@throttle
+                                vm.generateLocal(route.snapshotId, appId, node, point)
+                            } else {
+                                vm.generateDirect(route.snapshotId, appId, effectiveNodes, null)
+                            }
                             mainVm.popPage()
                         },
                         modifier = Modifier.weight(1f),
                         contentPadding = compactButtonPadding,
                     ) {
                         Text(
-                            text = "直接生成",
+                            text = if (markedPoint != null) "本地生成" else "直接生成",
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis,
@@ -390,7 +397,8 @@ private fun PointInfoStrip(point: Pair<Int, Int>?, reference: NodeInfo?) {
             "屏幕坐标 (${point.first}, ${point.second})\n" +
                 "触发组件：${reference.attr.id ?: reference.attr.text ?: reference.attr.name ?: "无标识"}" +
                 " [${reference.attr.left},${reference.attr.top},${reference.attr.right},${reference.attr.bottom}]\n" +
-                "相对该组件：宽 ${"%.3f".format(rx)}，高 ${"%.3f".format(ry)}"
+                "相对该组件：宽 ${"%.3f".format(rx)}，高 ${"%.3f".format(ry)}\n" +
+                "点「本地生成」直接出规则，不调用 AI"
         }
     }
     Row(
