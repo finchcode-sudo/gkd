@@ -82,7 +82,9 @@ class AiSnapshotPickerVm : BaseViewModel() {
         "我要点击的位置是屏幕坐标 (${point.first}, ${point.second})。" +
             "那里是画出来的按钮，没有独立的无障碍节点，请用 action 为 clickCenter，" +
             "position 写 {\"x\": \"${point.first}\", \"y\": \"${point.second}\"}，" +
-            "matches 只用来判断弹窗已出现。"
+            "matches 只用来判断弹窗已出现。" +
+            "注意：节点树里可能还保留着被弹窗盖住的底层页面（比如首页），" +
+            "不要拿它们当 matches 或点击目标；desc 按我在截图上看到的按钮来写。"
 
     /**
      * 直接生成：记录选中组件列表并后台生成规则。

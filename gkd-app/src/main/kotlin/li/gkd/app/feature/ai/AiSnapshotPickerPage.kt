@@ -388,7 +388,9 @@ private fun PointInfoStrip(point: Pair<Int, Int>?, reference: NodeInfo?) {
             val rx = (point.first - reference.attr.left).toFloat() / reference.attr.width
             val ry = (point.second - reference.attr.top).toFloat() / reference.attr.height
             "屏幕坐标 (${point.first}, ${point.second})\n" +
-                "相对所选组件：宽 ${"%.3f".format(rx)}，高 ${"%.3f".format(ry)}"
+                "触发组件：${reference.attr.id ?: reference.attr.text ?: reference.attr.name ?: "无标识"}" +
+                " [${reference.attr.left},${reference.attr.top},${reference.attr.right},${reference.attr.bottom}]\n" +
+                "相对该组件：宽 ${"%.3f".format(rx)}，高 ${"%.3f".format(ry)}"
         }
     }
     Row(
