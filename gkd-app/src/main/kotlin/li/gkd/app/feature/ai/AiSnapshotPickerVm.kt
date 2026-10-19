@@ -109,11 +109,15 @@ class AiSnapshotPickerVm : BaseViewModel() {
 
     private fun selectorOf(node: NodeInfo): String {
         val a = node.attr
-        val vid = a.vid ?: a.id?.substringAfterLast('/', a.id)
+        // vid 只在 id 以应用自己的包名开头时才有；系统控件（如 android:id/button2）要用完整 id，
+        // 否则 [vid="button2"] 永远匹配不上
+        val vid = a.vid
+        val fullId = a.id
         val text = a.text
         val desc = a.desc
         val base = when {
             !vid.isNullOrEmpty() -> "[vid=\"${escapeSelector(vid)}\"]"
+            !fullId.isNullOrEmpty() -> "[id=\"${escapeSelector(fullId)}\"]"
             !text.isNullOrEmpty() -> "[text=\"${escapeSelector(text)}\"]"
             !desc.isNullOrEmpty() -> "[desc=\"${escapeSelector(desc)}\"]"
             else -> "[name=\"${escapeSelector(a.name.orEmpty())}\"]" +
@@ -144,7 +148,7 @@ class AiSnapshotPickerVm : BaseViewModel() {
             .put("name", "点击坐标")
             .put("desc", "点击屏幕坐标 (${point.first}, ${point.second})")
             .put("actionMaximum", 1)
-            .put("resetMatch", "app")
+            .put("resetMatch", "match")
             .put("rules", JSONArray().put(rule))
         if (!activityId.isNullOrEmpty()) {
             group.put("activityIds", JSONArray().put(activityId))
