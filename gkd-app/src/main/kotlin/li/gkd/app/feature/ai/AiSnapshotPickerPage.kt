@@ -114,7 +114,7 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
     } else {
         markedPoint?.let { (px, py) -> hitNodeAt(nodes, px, py) }?.let { listOf(it) }.orEmpty()
     }
-    val summary = when (selectedNodes.size) {
+    val summary = if (pointMode) "取坐标" else when (selectedNodes.size) {
         0 -> "点击截图选择组件"
         1 -> lastComponent?.displayText().orEmpty()
         else -> "已选 ${selectedNodes.size} 个：${lastComponent?.displayText().orEmpty()}"
@@ -190,7 +190,7 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
                         nodes = nodes,
                         screenWidth = snapshot?.screenWidth ?: 0,
                         screenHeight = snapshot?.screenHeight ?: 0,
-                        selectedNodes = selectedNodes,
+                        selectedNodes = if (pointMode) emptyList() else selectedNodes,
                         onNodeToggle = { node ->
                             selectedNodes = if (selectedNodes.any { it.id == node.id }) {
                                 selectedNodes.filterNot { it.id == node.id }
