@@ -1,6 +1,13 @@
 package li.gkd.app.feature.ai
 
+import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import li.gkd.app.MainActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,6 +74,28 @@ fun AiSnapshotPickerPage(route: AiSnapshotPickerRoute) {
     val vm = viewModel<AiSnapshotPickerVm>()
     val snapshot by vm.snapshot.collectAsStateWithLifecycle()
     LaunchedEffect(route.snapshotId) { vm.loadSnapshot(route.snapshotId) }
+    // 刚进选择页的几秒内如果被目标应用抢走前台（比如开屏倒计时结束后它自己跳首页），
+    // 选择页就像「自己退出」了；这里检测到后把它拉回前台
+    val appContext = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val openedAt = remember { System.currentTimeMillis() }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && System.currentTimeMillis() - openedAt < 8000L) {
+                runCatching {
+                    appContext.startActivity(
+                        Intent(appContext, MainActivity::class.java).addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        )
+                    )
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val nodes = snapshot?.nodes.orEmpty()
     // 多选：再次点击已选组件则取消；多个组件在消息里用「组件 1」「组件 2」指代
     var selectedNodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
